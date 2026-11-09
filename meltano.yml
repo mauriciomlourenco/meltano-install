@@ -1,0 +1,58 @@
+default_environment: dev
+project_id: 01a1605e-3684-7449-8337-1b35516db6fe
+environments:
+- name: dev
+- name: staging
+- name: prod
+plugins:
+  extractors:
+  - name: tap-github
+    variant: meltanolabs
+    pip_url: meltanolabs-tap-github
+    config:
+      start_date: '2026-10-19'
+      repositories:
+      - meltano/meltano
+    #select:
+    #  - branches
+    #- branches.repo
+
+  - name: tap-github--branches
+    inherit_from: tap-github
+    select:
+      - branches
+
+  - name: tap-github--contributors
+    inherit_from: tap-github
+    select:
+      - contributors
+
+
+  loaders:
+  - name: target-jsonl
+    variant: andyh1203
+    pip_url: target-jsonl
+    config:
+      destination_path: ./output/target
+      #file_naming: {type: timestamp}
+  - name: target-parquet
+    variant: automattic
+    pip_url: git+https://github.com/Automattic/target-parquet.git
+    config:
+      destination_path: ./output
+
+  - name: target-postgres
+    variant: meltanolabs
+    pip_url: meltanolabs-target-postgres
+    config:
+      host: localhost
+      port: 5432
+      database: meltano_db
+      user: postgres
+      load_method: overwrite
+      default_target_schema: public
+
+jobs:
+  - name: github-contributors-to-postgres
+    tasks:
+      - tap-github--contributors target-postgres
